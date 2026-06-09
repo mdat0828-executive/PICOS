@@ -38,11 +38,36 @@ WITH
 			,VS_Target,VS_Actual,VS
 			,PrCom_Target,PrCom_Actual,PrCom
 			,NULL ProAc_Target, NULL  ProAc_Actual, NULL ProAc
-		FROM [srp].[SRP-EOEAnswerFocusPerformanceAudit])
+		FROM [srp].[SRP-EOEAnswerFocusPerformanceAudit]),
 
+/*================================Bảng lấy Data Audit NTW=================================*/
+	Total_Audit as
+		(SELECT * FROM MT_AUDIT
+			UNION ALL
+				SELECT * FROM GT_AUDIT
+					UNION ALL
+						SELECT * FROM MONT_AUDIT),
 
-SELECT TOP 5 * FROM MT_AUDIT WHERE MONTH = '2026-06'
-UNION ALL
-SELECT TOP 100 * FROM GT_AUDIT WHERE MONTH = '2026-06'
-UNION ALL
-SELECT TOP 100 * FROM MONT_AUDIT WHERE MONTH = '2026-06'
+/*==============================Bảng Target PICOS theo Tháng===============================*/
+	GT_Target as
+		(SELECT 
+			Channel
+			,FORMAT(Month,'yyyy-MM') as Month
+			,Audited_Outlet [OutletTarget]
+			,Perfect_Outlet [OutletPerfect]
+			,Target_PICOS [%Perfect]
+		FROM [srp].[TF_PICOSTarget_GT&MONT]),
+--============================================
+	MT_Target as
+		(Select
+			FORMAT(Month,'yyyy-MM') as Month
+			,ZoneID
+			,Audited_Outlet [OutletTarget]
+			,Perfect_Outlet [OutletPerfect]
+			--,SRP_Outlet
+			,Target_PICOS [%Perfect]
+			,Target_Fundamental [%Fundamental]
+		FROM [srp].[TF_PICOSTarget_MOFT])
+--============================================
+	MONT_Target as
+SELECT TOP 10 * FROM MT_Target WHERE Month = '2026-04'
