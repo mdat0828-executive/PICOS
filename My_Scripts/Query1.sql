@@ -177,17 +177,40 @@ GT_Audit AS
 				,e.Title AS [TRACKING]
 			FROM [srp].[SRP_FullStructure_SR_DSM] AS s
 			left join [srp].[SRP_SR_DSM_Exclude] as e on s.Month = e.Month and s.PersonID = e.PersonID
-			WHERE s.MONTH = @MONTH /*and e.Title IS NULL*/) as srp),
+			/*WHERE s.MONTH = @MONTH and e.Title IS NULL*/) as srp),
 
 /*=========================================================================================================Bảng Target PICOS theo Tháng========================================================================================*/
-	GT_Target as
-		(SELECT
-			Month as Month
-			,Channel
-			,Audited_Outlet [OutletTarget]
-			,Perfect_Outlet [OutletPerfect]
-			,Target_PICOS [%Perfect]
-		FROM [srp].[TF_PICOSTarget_GT&MONT]),
+GT_MONT_Target AS
+(
+    -- GT
+    SELECT
+        Month,
+        Channel,
+        Audited_Outlet AS OutletTarget,
+        Perfect_Outlet AS OutletPerfect,
+        Target_PICOS AS [%Perfect]
+    FROM [srp].[TF_PICOSTarget_GT&MONT]
+    WHERE Channel = 'GT'
+    UNION ALL
+    -- MONT dữ liệu cũ
+    SELECT
+        Month,
+        'MONT' AS Channel,
+        Audited_Outlet AS OutletTarget,
+        Perfect_Outlet AS OutletPerfect,
+        Target_PICOS AS [%Perfect]
+    FROM [srp].[TF_PICOSTarget_GT&MONT]
+    WHERE Channel = 'GT'
+      AND Month < '2026-06-01'
+    UNION ALL
+    -- MONT target mới
+    SELECT
+        CAST('2026-06-01' AS DATE) AS Month,
+        'MONT' AS Channel,
+        40 AS OutletTarget,
+        30 AS OutletPerfect,
+        0.75 AS [%Perfect]
+),
 --============================================
 	MT_Target as
 		(Select 'MOFT' as Channel
@@ -199,27 +222,7 @@ GT_Audit AS
 			,Target_PICOS [%Perfect]
 			,Target_Fundamental [%Fundamental]
 		FROM [srp].[TF_PICOSTarget_MOFT]),
-/*============================================*/
-	MONT_Target as
-		(SELECT
-			Month AS [Month]
-			,Channel
-			,Audited_Outlet AS OutletTarget
-			,Perfect_Outlet AS OutletPerfect
-			,Target_PICOS AS [%Perfect]
-		FROM [srp].[TF_PICOSTarget_GT&MONT]
-		WHERE Month < '2026-06-01'
-			UNION ALL
-	--==============Update Target Mới nếu có thay đổi==============
-		SELECT DISTINCT
-			Month AS [Month]
-			,'MONT' AS Channel
-			,40 AS OutletTarget
-			,30 AS OutletPerfect
-			,0.75 AS [%Perfect]
-		FROM [srp].[TF_PICOSTarget_GT&MONT]
-		WHERE Month = '2026-06-01'),
-/*----------------------------------------------------------------------------| Query chạy rule tính |--------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------| Query chạy rule tính |--------------------------------------------------------------------------------*/
 	PICOS_GT as
 		(SELECT 
 			t.*
@@ -232,16 +235,20 @@ GT_Audit AS
 					FROM MONT_AUDIT
 				)t
 				LEFT JOIN Structured as s on t.Month = s.Month and t.SRID = s.PersonID
-		),
+		)
 
-	Result_Picos_GT as
+	,Result_Picos_GT as
 (
-    SELECT *
-          ,ROW_NUMBER() OVER
-            (
-                PARTITION BY [Month], SRID
-                ORDER BY PerfectStore DESC
-            ) AS [Rank]
+    SELECT
+        x.*
+        ,tg.OutletTarget
+        ,tg.OutletPerfect
+        ,tg.[%Perfect]
+        ,ROW_NUMBER() OVER
+        (
+            PARTITION BY x.[Month], x.SRID
+            ORDER BY x.PerfectStore DESC
+        ) AS [Rank]
     FROM
     (
         SELECT *
@@ -264,38 +271,78 @@ GT_Audit AS
         FROM
         (
             SELECT
-                Month ,ZoneID ,SRID ,SRFullName ,AuditDate
-                ,OutletID ,OutletName ,SegmentName ,Tier ,Note_SRP
+                Channel      -- Thêm cột này
+                ,Month
+                ,ZoneID
+                ,SRID
+                ,SRFullName
+                ,AuditDate
+                ,OutletID
+                ,OutletName
+                ,SegmentName
+                ,Tier
+                ,Note_SRP
+
                 ,CASE
                     WHEN NND_Target IS NULL THEN NULL
                     WHEN NND_Actual >= NND_Target THEN 1
                     ELSE 0
                  END AS NND_Result
+
                 ,CASE
                     WHEN FS_Target IS NULL THEN NULL
                     WHEN FS_Actual >= FS_Target THEN 1
                     ELSE 0
                  END AS FS_Result
+
                 ,CASE
                     WHEN VS_Target IS NULL THEN NULL
                     WHEN VS_Actual >= VS_Target THEN 1
                     ELSE 0
                  END AS VS_Result
+
                 ,CASE
                     WHEN PrCom_Target IS NULL THEN NULL
                     WHEN PrCom_Actual >= PrCom_Target THEN 1
                     ELSE 0
                  END AS PrCom_Result
+
                 ,CASE
                     WHEN ProAc_Target IS NULL THEN NULL
                     WHEN ProAc_Actual >= ProAc_Target THEN 1
                     ELSE 0
                  END AS ProAc_Result
+
             FROM PICOS_GT
         ) t
     ) x
+    LEFT JOIN GT_MONT_Target tg
+        ON x.Month = tg.Month
+       AND x.Channel = tg.Channel
 )
-		
 
-SELECT * FROM Result_Picos_GT
-WHERE Month = @Month
+select
+Month ,ZoneID ,SRID ,SRFullName 
+,AuditDate ,OutletID ,OutletName ,SegmentName 
+,Tier ,Note_SRP ,NND_Result ,FS_Result ,VS_Result ,PrCom_Result ,ProAc_Result 
+,PerfectStore ,OutletTarget ,OutletPerfect ,[%Perfect]
+,CASE
+    WHEN OutletTarget >= [Rank] THEN 1
+     ELSE 0
+END AS OutletAchieved
+from Result_Picos_GT 
+where Month = @Month
+
+
+
+
+
+
+
+
+
+
+
+
+
+
