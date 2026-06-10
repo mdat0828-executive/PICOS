@@ -155,7 +155,7 @@ GT_Audit AS
         , NULL AS ProAc
     FROM [srp].[SRP-EOEAnswerFocusPerformanceAudit]
     WHERE Month > '2024-12-01'
-)
+),
 
 /*================================>> Bảng lấy Data Audit NTW <<=================================*/
 	Total_Audit as
