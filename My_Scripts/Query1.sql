@@ -9,7 +9,7 @@ WITH
 ====================================================================*/
 
 /*====================================================================
-    CTE: GT_Audit
+    GT_Audit
     Channel : GT
     BU      : NORTH | CENTRAL | GHCM | MKD
     Rule    : Exclude MONT Zone (MO_)
@@ -57,7 +57,7 @@ GT_Audit AS (
 ),
 
 /*====================================================================
-    CTE: MONT_Audit
+    MONT_Audit
     Channel : MONT
     BU      : MONT
     Rule    : Only Zone MO_
@@ -105,7 +105,7 @@ MONT_Audit AS (
 ),
 
 /*====================================================================
-    CTE: MT_Audit
+    MT_Audit
     Channel : MOFT
     BU      : Modern Trade
     Source  : SRP-EOEAnswerFocusPerformanceAudit
@@ -156,7 +156,7 @@ MT_Audit AS (
 ),
 
 /*====================================================================
-    CTE: Total_Audit (Unused in the rest of query, but kept for logic integrity)
+   Total_Audit (Unused in the rest of query, but kept for logic integrity)
 ====================================================================*/
 Total_Audit AS (
     SELECT * FROM MT_Audit
@@ -167,7 +167,7 @@ Total_Audit AS (
 ),
 
 /*====================================================================
-    CTE: Structured
+    Structured
     Mapping giữa Structure và những sale không trong SRP
 ====================================================================*/
 Structured AS (
@@ -202,7 +202,7 @@ Structured AS (
 ),
 
 /*====================================================================
-    CTE: GT_MONT_Target
+    GT_MONT_Target
     Bảng Target PICOS theo Tháng
 ====================================================================*/
 GT_MONT_Target AS (
@@ -241,7 +241,7 @@ GT_MONT_Target AS (
 ),
 
 /*====================================================================
-    CTE: MT_Target (Unused in the rest of query, but kept for logic integrity)
+    MT_Target (Unused in the rest of query, but kept for logic integrity)
 ====================================================================*/
 MT_Target AS (
     SELECT 
@@ -256,7 +256,7 @@ MT_Target AS (
 ),
 
 /*====================================================================
-    CTE: PICOS_GT
+    PICOS_GT
     Query chạy rule tính
 ====================================================================*/
 PICOS_GT AS (
@@ -277,7 +277,7 @@ PICOS_GT AS (
 ),
 
 /*====================================================================
-    CTE: Result_Picos_GT
+    Result_Picos_GT
 ====================================================================*/
 Result_Picos_GT AS (
     SELECT
@@ -320,27 +320,37 @@ Result_Picos_GT AS (
                 OutletName,
                 SegmentName,
                 Tier,
-                Note_SRP,
+                Note_SRP,--
+                NND_Target,
+                NND_Actual,
                 CASE
                     WHEN NND_Target IS NULL THEN NULL
                     WHEN NND_Actual >= NND_Target THEN 1
                     ELSE 0
                 END AS NND_Result,
+                FS_Target,
+                FS_Actual,                
                 CASE
                     WHEN FS_Target IS NULL THEN NULL
                     WHEN FS_Actual >= FS_Target THEN 1
                     ELSE 0
                 END AS FS_Result,
+                VS_Target,
+                VS_Actual,                
                 CASE
                     WHEN VS_Target IS NULL THEN NULL
                     WHEN VS_Actual >= VS_Target THEN 1
                     ELSE 0
                 END AS VS_Result,
+                PrCom_Target,
+                PrCom_Actual,
                 CASE
                     WHEN PrCom_Target IS NULL THEN NULL
                     WHEN PrCom_Actual >= PrCom_Target THEN 1
                     ELSE 0
                 END AS PrCom_Result,
+                ProAc_Target,
+                ProAc_Actual,
                 CASE
                     WHEN ProAc_Target IS NULL THEN NULL
                     WHEN ProAc_Actual >= ProAc_Target THEN 1
@@ -353,32 +363,20 @@ Result_Picos_GT AS (
         ON x.[Month] = tg.[Month]
        AND x.Channel = tg.Channel
 )
-
 /*====================================================================
-    FINAL SELECT
+    FINAL SELECT Bảng Achievement cho từng KPI được tính theo công thức có phân biệt kênh GT và MONT
 ====================================================================*/
 SELECT
-    v1.[BusinessUnitID],
-    v1.RegionName,
-    r1.[Month],
-    r1.ZoneID,
-    r1.SRID,
-    r1.SRFullName,
-    r1.AuditDate,
-    r1.OutletID,
-    r1.OutletName,
-    r1.SegmentName,
-    r1.Tier,
-    r1.Note_SRP,
-    r1.NND_Result,
-    r1.FS_Result,
-    r1.VS_Result,
-    r1.PrCom_Result,
-    r1.ProAc_Result,
-    r1.PerfectStore,
-    r1.OutletTarget,
-    r1.OutletPerfect,
-    r1.[%Perfect],
+    r1.[Month],v1.[BusinessUnitID] as [BU],v1.RegionName as [Region],r1.ZoneID as [Area],
+    r1.SRID,r1.SRFullName,r1.AuditDate,
+    r1.OutletID,r1.OutletName,r1.SegmentName,r1.Tier,
+    r1.NND_Target,r1.NND_Actual,r1.NND_Result,
+    r1.FS_Target,r1.FS_Actual,r1.FS_Result,
+    r1.VS_Target,r1.VS_Actual,r1.VS_Result,
+    r1.PrCom_Target,r1.PrCom_Actual,r1.PrCom_Result,
+    r1.ProAc_Target,r1.ProAc_Actual,r1.ProAc_Result,
+    r1.PerfectStore,r1.OutletTarget,r1.OutletPerfect,
+    r1.[%Perfect],r1.Note_SRP,
     CASE
         WHEN r1.OutletTarget >= r1.[Rank] THEN 1
         ELSE 0
