@@ -184,7 +184,7 @@ Result_GT AS (
                 ELSE 0 END AS PerfectStore
         FROM (
             SELECT
-                Channel,[Month],ZoneID,SRID,SRFullName,AuditDate,OutletID,OutletName,SegmentName,Tier,
+                BU,Channel,[Month],ZoneID,SRID,SRFullName,AuditDate,OutletID,OutletName,SegmentName,Tier,
                 NND_Target,
                 NND_Actual,
                 CASE
@@ -257,7 +257,7 @@ Result_MONT AS (
                 ELSE 0 END AS PerfectStore
         FROM (
             SELECT
-                Channel,[Month],ZoneID,SRID,SRFullName,AuditDate,OutletID,OutletName,SegmentName,Tier,
+                BU,Channel,[Month],ZoneID,SRID,SRFullName,AuditDate,OutletID,OutletName,SegmentName,Tier,
                 NND_Target,
                 NND_Actual,
                 CASE
